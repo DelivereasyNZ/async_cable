@@ -1,39 +1,42 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# AsyncCable
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages). 
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Async/stream-oriented implementation of the Rails ActionCable protocol for Dart & Flutter.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+Supports ActionCable over `dart:io` WebSocket connections.
+
+Web (`dart:html`) is not supported, and support is not planned at this time.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+To use this library with unauthenticated ActionCable servers, you just need to know the URL.
+
+Most ActionCable servers use authentication. To use these, you first need to figure out how your Dart application will authenticate to the Rails server. For example, if you will use `Authorization` headers, you may implement your own APIs to get an authentication token, then pass it in the [AsyncCable.connect] `headers` option, and make sure the `ApplicationCable::Connection` code in the server will accept these authorization headers.
+
+Then you just need to agree on the channel naming and parameter conventions with the server code, and you're ready to start sending & receiving messages.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
-
 ```dart
-const like = 'sample';
+void main() async {
+  final accessToken = yourAuthToken();
+  final connection = await AsyncCable.connect(
+    "ws://localhost:3000/store_cable",
+    headers: {
+      "Origin": "http://localhost:3000",
+      "Authorization": "Bearer $accessToken",
+    },
+  );
+  final channel = connection.channel("HelloChannel", {"foo": "bar"});
+  channel.sendCommand({"action": "hello", "greeting": "hi"});
+  channel.messages.listen(
+    (message) => print("Received ${message.message["greeting"]}"),
+    cancelOnError: true,
+  );
+}
 ```
 
 ## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+Copyright (c) Delivereasy Ltd., 2023.
