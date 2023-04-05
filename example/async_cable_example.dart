@@ -14,9 +14,9 @@ void main() async {
     },
   );
   final channel = connection.channel("HelloChannel", {"foo": "bar"});
-  channel.perform("hello", {"greeting": "hi"});
   channel.messages.listen(
     (message) => print("Received ${message.message["greeting"]}"),
     cancelOnError: true,
   );
+  channel.perform("hello", {"greeting": "hi"});
 }
