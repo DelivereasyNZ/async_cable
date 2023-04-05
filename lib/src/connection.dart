@@ -183,7 +183,13 @@ class Connection implements AsyncCableConnection {
 
   @override
   Channel channel(String name, Map<String, dynamic>? params) {
+    if (!name.endsWith("Channel")) {
+      throw UnsupportedError(
+          "Invalid channel name '$name' (ActionCable requires that channels end with 'Channel')");
+    }
+
     final identifier = ChannelIdentifier.encode(name, params ?? {});
+
     return _channels[identifier] ??= Channel(
       name: name,
       params: params ?? {},
