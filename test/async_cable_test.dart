@@ -164,11 +164,10 @@ void main() {
     });
 
     group('heartbeats', () {
-      late AsyncCableConnection connection;
       dynamic deliveredError;
 
       setUp(() async {
-        connection = await AsyncCable.connect(url,
+        await AsyncCable.connect(url,
             pingTimeout: Duration(milliseconds: 50),
             onError: (error) => deliveredError = error);
       });
