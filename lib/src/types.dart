@@ -82,12 +82,10 @@ abstract class AsyncCableChannel {
 
   /// Sends a command message on this connection.
   ///
-  /// The convention is that the data contain an "action" field, which is a string.
-  ///
   /// Sending commands in ActionCable is fire-and-forget; there's no protocol-level
   /// acknowledgement that the command was received or processed successfully. Any
   /// response from the server will be delivered on the [messages] stream as normal.
-  void sendCommand(Map<String, dynamic> data);
+  void perform(String action, [Map<String, dynamic> data]);
 }
 
 /// A connection to the ActionCable endpoint.

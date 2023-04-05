@@ -206,12 +206,12 @@ class Connection implements AsyncCableConnection {
           "identifier": identifier,
         }));
       },
-      sendCommand: (Channel channel, Map<String, dynamic> data) {
+      perform: (Channel channel, String action, Map<String, dynamic> data) {
         // ActionCable expects data be double-encoded, like identifier :(
         _websocket.add(json.encode({
           "command": "message",
           "identifier": identifier,
-          "data": json.encode(data),
+          "data": json.encode({"action": action, ...data}),
         }));
       },
     );

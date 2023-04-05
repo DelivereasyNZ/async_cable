@@ -20,7 +20,7 @@ class Channel implements AsyncCableChannel {
   Stream<AsyncCableChannelStatus> get statuses => _statusesController.stream;
 
   final String identifier;
-  final Function(Channel, Map<String, dynamic>) _sendCommand;
+  final Function(Channel, String, Map<String, dynamic>) _perform;
   final StreamController<AsyncCableChannelStatus> _statusesController =
       StreamController.broadcast();
   late StreamController<dynamic> _messagesController;
@@ -31,8 +31,8 @@ class Channel implements AsyncCableChannel {
       required this.identifier,
       required void Function(Channel) onListen,
       required void Function(Channel) onCancel,
-      required void Function(Channel, Map<String, dynamic>) sendCommand})
-      : _sendCommand = sendCommand {
+      required void Function(Channel, String, Map<String, dynamic>) perform})
+      : _perform = perform {
     _messagesController = StreamController.broadcast(onListen: () {
       _setStatus(AsyncCableChannelStatus.subscribing);
       onListen(this);
@@ -45,8 +45,8 @@ class Channel implements AsyncCableChannel {
   }
 
   @override
-  void sendCommand(Map<String, dynamic> data) {
-    _sendCommand(this, data);
+  void perform(String action, [Map<String, dynamic>? data]) {
+    _perform(this, action, data ?? {});
   }
 
   void _setStatus(AsyncCableChannelStatus s) {
