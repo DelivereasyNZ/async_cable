@@ -363,14 +363,14 @@ void main() {
 
     group('subscribed channels', () {
       late StreamSubscription<dynamic> subscription;
-      List<AsyncCableMessage> deliveredMessages = [];
+      List<dynamic> deliveredMessages = [];
       dynamic deliveredError;
 
       setUp(() {
         deliveredMessages = [];
         deliveredError = null;
         subscription = channel.messages.listen(
-            (AsyncCableMessage message) => deliveredMessages.add(message),
+            (message) => deliveredMessages.add(message),
             onError: (error) => deliveredError = error);
         transport.add(
             '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
@@ -383,8 +383,8 @@ void main() {
             '{"identifier":"{\\"channel\\":\\"SomeTestChannel\\"}","message":100}');
         await Future.delayed(Duration.zero);
 
-        expect(deliveredMessages[0].message, {"somedata": "Sent by server"});
-        expect(deliveredMessages[1].message, 100);
+        expect(deliveredMessages[0], {"somedata": "Sent by server"});
+        expect(deliveredMessages[1], 100);
         expect(deliveredError, isNull);
         expect(channel.status, AsyncCableChannelStatus.subscribed);
       });
@@ -424,7 +424,7 @@ void main() {
         expect(channel.status, AsyncCableChannelStatus.unsubscribed);
 
         subscription = channel.messages.listen(
-            (AsyncCableMessage message) => deliveredMessages.add(message),
+            (message) => deliveredMessages.add(message),
             onError: (error) => deliveredError = error);
         expect(channel.status, AsyncCableChannelStatus.subscribing);
 

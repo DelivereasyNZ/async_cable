@@ -1,19 +1,5 @@
 import 'dart:async';
 
-/// A single message received from an ActionCable connection.
-class AsyncCableMessage {
-  /// The channel.
-  final AsyncCableChannel channel;
-
-  /// The received message.
-  final dynamic message;
-
-  @override
-  String toString() => message.toString();
-
-  AsyncCableMessage({required this.channel, required this.message});
-}
-
 /// Describes the state of an [AsyncCableChannel].
 ///
 /// See [AsyncCableChannel.status] for the state flow.
@@ -72,7 +58,7 @@ abstract class AsyncCableChannel {
   /// The stream will deliver errors if the channel subscription is "rejected"
   /// by the server, if the connection is disconnected, or fails for any reason.
   /// Errors will be one of the subclasses of [AsyncCableError].
-  Stream<AsyncCableMessage> get messages;
+  Stream<dynamic> get messages;
 
   /// Current status of this channel.
   ///

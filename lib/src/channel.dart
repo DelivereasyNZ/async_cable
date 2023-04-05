@@ -11,7 +11,7 @@ class Channel implements AsyncCableChannel {
   final Map<String, dynamic> params;
 
   @override
-  Stream<AsyncCableMessage> get messages => _messagesController.stream;
+  Stream<dynamic> get messages => _messagesController.stream;
 
   @override
   AsyncCableChannelStatus status = AsyncCableChannelStatus.unsubscribed;
@@ -23,7 +23,7 @@ class Channel implements AsyncCableChannel {
   final Function(Channel, Map<String, dynamic>) _sendCommand;
   final StreamController<AsyncCableChannelStatus> _statusesController =
       StreamController.broadcast();
-  late StreamController<AsyncCableMessage> _messagesController;
+  late StreamController<dynamic> _messagesController;
 
   Channel(
       {required this.name,
@@ -76,8 +76,7 @@ class Channel implements AsyncCableChannel {
     // the subscribing state, and we want to ignore those until we receive the
     // confirm_subscription/reject_subscription.
     if (status == AsyncCableChannelStatus.subscribed) {
-      _messagesController
-          .add(AsyncCableMessage(channel: this, message: message));
+      _messagesController.add(message);
     }
   }
 
