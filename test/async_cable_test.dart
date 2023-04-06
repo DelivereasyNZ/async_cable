@@ -164,10 +164,11 @@ void main() {
     });
 
     group('heartbeats', () {
+      late AsyncCableConnection connection;
       dynamic deliveredError;
 
       setUp(() async {
-        await AsyncCable.connect(url,
+        connection = await AsyncCable.connect(url,
             pingTimeout: Duration(milliseconds: 50),
             onError: (error) => deliveredError = error);
       });
@@ -184,6 +185,7 @@ void main() {
 
         await Future.delayed(Duration(milliseconds: 20));
         expect(deliveredError, isA<AsyncCablePingTimeoutError>());
+        expect(connection.isClosed, true);
       });
     });
 
@@ -205,6 +207,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerRestart>());
+        expect(connection.isClosed, true);
       });
 
       test(
@@ -214,6 +217,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerClosedConnection>());
+        expect(connection.isClosed, true);
       });
 
       test(
@@ -223,6 +227,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerClosedConnection>());
+        expect(connection.isClosed, true);
       });
 
       test('delivers a network error if the stream delivers any error',
@@ -231,6 +236,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableNetworkError>());
+        expect(connection.isClosed, true);
       });
 
       test('delivers a protocol error if a non-map JSON message is received',
@@ -239,6 +245,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(connection.isClosed, true);
       });
 
       test('delivers a protocol error if an invalid JSON string is received',
@@ -247,6 +254,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(connection.isClosed, true);
       });
 
       test('delivers a protocol error if a binary message is received',
@@ -255,6 +263,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(connection.isClosed, true);
       });
 
       test('delivers no error if the connection is explicitly closed',
@@ -263,6 +272,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isNull);
+        expect(connection.isClosed, true);
       });
     });
   });
@@ -287,16 +297,14 @@ void main() {
     });
   });
 
-  group('AsyncCableConnection.channel', () {
+  group('AsyncCableConnection.subscribe', () {
     late AsyncCableConnection connection;
-    late AsyncCableChannel channel;
 
     setUp(() async {
       completer.complete(mockWebSocket);
       whenListen(() => addWelcome());
 
       connection = await AsyncCable.connect(url);
-      channel = connection.channel("SomeTestChannel", {});
 
       when(() => mockWebSocket.add(any())).thenReturn(null);
     });
@@ -305,74 +313,142 @@ void main() {
       test(
           'sends a subscribe command, with the channel identifier double-encoded',
           () async {
-        expect(channel.status, AsyncCableChannelStatus.unsubscribed);
+        connection.subscribe("SomeTestChannel", {}, null);
 
-        channel.messages.listen((_) {});
-
-        expect(channel.status, AsyncCableChannelStatus.subscribing);
         verify(() => mockWebSocket.add(
             '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
       });
 
       test('becomes subscribed if the subscription is confirmed', () async {
+        bool completed = false;
         dynamic receivedError;
-        channel.messages
-            .listen((_) {}, onError: (error) => receivedError = error);
-        expect(channel.status, AsyncCableChannelStatus.subscribing);
+        final future = connection
+            .subscribe("SomeTestChannel", {}, null,
+                onError: (error) => receivedError = error)
+            .whenComplete(() => completed = true);
+
+        await Future.delayed(Duration.zero);
+        expect(completed, false);
 
         transport.add(
             '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
         await Future.delayed(Duration.zero);
 
-        expect(channel.status, AsyncCableChannelStatus.subscribed);
+        expect(completed, true);
+        expect(await future, isA<AsyncCableChannel>());
         expect(receivedError, isNull);
       });
 
-      test(
-          'delivers an error on the messages stream if the subscription is rejected',
-          () async {
-        dynamic receivedError;
-        channel.messages
-            .listen((_) {}, onError: (error) => receivedError = error);
-        expect(channel.status, AsyncCableChannelStatus.subscribing);
+      test('throws an error if the subscription is rejected', () async {
+        final future = connection.subscribe("SomeTestChannel", {}, null);
 
         transport.add(
             '{"type":"reject_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
-        await Future.delayed(Duration.zero);
-
-        expect(channel.status, AsyncCableChannelStatus.rejected);
-        expect(receivedError, isA<AsyncCableSubscriptionRejected>());
+        expect(future, throwsA(isA<AsyncCableSubscriptionRejected>()));
       });
 
-      test('is immediately done if the connection is already closed', () async {
-        connection.close();
-        expect(channel.status, AsyncCableChannelStatus.disconnected);
+      test('only sends a subscribe command if the channel is subscribed twice',
+          () async {
+        final future1 = connection.subscribe("SomeTestChannel", {}, null);
+        final future2 = connection.subscribe("SomeTestChannel", {}, null);
 
-        dynamic receivedError;
-        bool done = false;
-        channel.messages.listen((_) {},
-            onError: (error) => receivedError = error,
-            onDone: () => done = true);
+        transport.add(
+            '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
         await Future.delayed(Duration.zero);
-        expect(channel.status, AsyncCableChannelStatus.disconnected);
-        expect(done, true);
-        expect(receivedError, isNull);
+
+        expect(await future1, isA<AsyncCableChannel>());
+        expect(await future2, isA<AsyncCableChannel>());
+
+        verify(() => mockWebSocket.add(
+                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'))
+            .called(1);
+      });
+
+      test(
+          'only sends one subscribe command if the channel is subscribed twice, and confirmed in between',
+          () async {
+        final future1 = connection.subscribe("SomeTestChannel", {}, null);
+        transport.add(
+            '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
+        await Future.delayed(Duration.zero);
+        expect(await future1, isA<AsyncCableChannel>());
+
+        final future2 = connection.subscribe("SomeTestChannel", {}, null);
+        await Future.delayed(Duration.zero);
+        expect(await future2, isA<AsyncCableChannel>());
+
+        verify(() => mockWebSocket.add(
+                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'))
+            .called(1);
+      });
+
+      test('allows re-subscription after unsubscription', () async {
+        final future1 = connection.subscribe("SomeTestChannel", {}, null);
+        transport.add(
+            '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
+        await Future.delayed(Duration.zero);
+        (await future1).cancel();
+
+        final future2 = connection.subscribe("SomeTestChannel", {}, null);
+        transport.add(
+            '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
+        await Future.delayed(Duration.zero);
+        expect(await future2, isA<AsyncCableChannel>());
+
+        verify(() => mockWebSocket.add(
+                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'))
+            .called(2);
+      });
+
+      test('completes with an error if the connection is closed by an error before the subscription is confirmed', () async {
+        final future = connection.subscribe("SomeTestChannel", {}, null);
+        verify(() => mockWebSocket.add(
+                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+
+        expect(future, throwsA(isA<AsyncCableServerRestart>()));
+        transport.add(
+            json.encode({"type": "disconnect", "reason": "server_restart"}));
+        await Future.delayed(Duration.zero);
+      });
+
+      test('completes with an error if the connection is closed by an error before the subscription is confirmed', () async {
+        final future = connection.subscribe("SomeTestChannel", {}, null);
+        verify(() => mockWebSocket.add(
+                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+
+        expect(future, throwsA(isA<StateError>()));
+        connection.close();
+      });
+
+      test('is immediately rejected if the connection is already closed',
+          () async {
+        connection.close();
+
+        expect(() => connection.subscribe("SomeTestChannel", {}, null),
+            throwsA(isA<StateError>()));
+      });
+
+      test('is immediately rejected if the connection name is invalid',
+          () async {
+        expect(() => connection.subscribe("SomeTest", {}, null),
+            throwsA(isA<UnsupportedError>()));
       });
     });
 
     group('subscribed channels', () {
-      late StreamSubscription<dynamic> subscription;
+      late AsyncCableChannel channel;
       List<dynamic> deliveredMessages = [];
       dynamic deliveredError;
 
-      setUp(() {
+      setUp(() async {
         deliveredMessages = [];
         deliveredError = null;
-        subscription = channel.messages.listen(
-            (message) => deliveredMessages.add(message),
+        final future = connection.subscribe(
+            "SomeTestChannel", {}, (message) => deliveredMessages.add(message),
             onError: (error) => deliveredError = error);
         transport.add(
             '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
+        channel = await future;
       });
 
       test('delivers messages received on the channel', () async {
@@ -385,57 +461,67 @@ void main() {
         expect(deliveredMessages[0], {"somedata": "Sent by server"});
         expect(deliveredMessages[1], 100);
         expect(deliveredError, isNull);
-        expect(channel.status, AsyncCableChannelStatus.subscribed);
       });
 
-      test('delivers connection errors as channel message stream errors',
-          () async {
+      test('delivers connection errors as channel stream errors', () async {
         transport.add(
             json.encode({"type": "disconnect", "reason": "server_restart"}));
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerRestart>());
-        expect(channel.status, AsyncCableChannelStatus.disconnected);
       });
 
       test(
-          'closes the messages stream without error if the connection is explicitly closed',
+          'closes the channel stream without error if the connection is explicitly closed',
           () async {
         connection.close();
 
-        expect(channel.status, AsyncCableChannelStatus.disconnected);
         await Future.delayed(Duration.zero);
         expect(deliveredError, isNull);
       });
 
       test(
-          'returns to an unsubscribed state if the messages subscription is cancelled',
+          'closes the channel stream without error if the channel subscription is explicitly cancelled using the channel object',
           () async {
-        subscription.cancel();
+        channel.cancel();
 
-        expect(channel.status, AsyncCableChannelStatus.unsubscribed);
         await Future.delayed(Duration.zero);
-        expect(deliveredError, isNull);
-      });
-
-      test('allows re-subscription after unsubscription', () async {
-        subscription.cancel();
-        expect(channel.status, AsyncCableChannelStatus.unsubscribed);
-
-        subscription = channel.messages.listen(
-            (message) => deliveredMessages.add(message),
-            onError: (error) => deliveredError = error);
-        expect(channel.status, AsyncCableChannelStatus.subscribing);
-
-        transport.add(
-            '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
-        await Future.delayed(Duration.zero);
-
-        expect(channel.status, AsyncCableChannelStatus.subscribed);
         expect(deliveredError, isNull);
         verify(() => mockWebSocket.add(
+            '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+      });
+
+      test(
+          'closes the channel stream without error if the channel subscription is explicitly cancelled using the subscription object',
+          () async {
+        channel.subscription.cancel();
+
+        await Future.delayed(Duration.zero);
+        expect(deliveredError, isNull);
+        verify(() => mockWebSocket.add(
+            '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+      });
+
+      test(
+          'only unsubscribes when all subscriptions to the channel have been cancelled',
+          () async {
+        final second = await connection.subscribe(
+            "SomeTestChannel", {}, (message) => deliveredMessages.add(message),
+            onError: (error) => deliveredError = error);
+        verify(() => mockWebSocket.add(
                 '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'))
-            .called(2);
+            .called(1);
+
+        channel.subscription.cancel();
+        await Future.delayed(Duration.zero);
+        verifyNever(() => mockWebSocket.add(
+            '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+
+        second.cancel();
+        await Future.delayed(Duration.zero);
+        expect(deliveredError, isNull);
+        verify(() => mockWebSocket.add(
+            '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
       });
     });
   });

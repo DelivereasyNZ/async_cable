@@ -5,7 +5,36 @@ import 'dart:io';
 import 'channel_identifier.dart';
 import 'types.dart';
 import 'errors.dart';
-import 'channel.dart';
+
+class Channel implements AsyncCableChannel {
+  @override
+  final String name;
+
+  @override
+  final Map<String, dynamic> params;
+
+  @override
+  final StreamSubscription subscription;
+
+  final Function(String, Map<String, dynamic>) _perform;
+
+  Channel(
+      {required this.name,
+      required this.params,
+      required this.subscription,
+      required void Function(String, Map<String, dynamic>) perform})
+      : _perform = perform;
+
+  @override
+  void cancel() {
+    subscription.cancel();
+  }
+
+  @override
+  void perform(String action, [Map<String, dynamic>? data]) {
+    _perform(action, data ?? {});
+  }
+}
 
 class Connection implements AsyncCableConnection {
   final WebSocket _websocket;
@@ -13,7 +42,8 @@ class Connection implements AsyncCableConnection {
   final Completer<Connection> _welcomed = Completer();
   final void Function(AsyncCableError)? _onError;
 
-  final Map<String, Channel> _channels = {};
+  final Map<String, Completer<StreamController>> _pending = {};
+  final Map<String, StreamController> _controllers = {};
   StreamSubscription? _websocketSubscription;
   Timer? _pingTimer;
 
@@ -30,6 +60,36 @@ class Connection implements AsyncCableConnection {
         _onError = onError {
     _websocketSubscription = _websocket.listen(_websocketData,
         onError: _websocketError, onDone: _websocketDone);
+  }
+
+  @override
+  Future<AsyncCableChannel> subscribe(
+      String channelName,
+      Map<String, dynamic>? channelParams,
+      void Function(dynamic message)? onData,
+      {void Function(dynamic error)? onError,
+      void Function()? onDone}) {
+    if (!channelName.endsWith("Channel")) {
+      throw UnsupportedError(
+          "Invalid channel name '$channelName' (ActionCable requires that channel names end with 'Channel')");
+    }
+    if (isClosed) {
+      throw StateError("Can't subscribe to a channel on a closed connection");
+    }
+
+    final identifier =
+        ChannelIdentifier.encode(channelName, channelParams ?? {});
+
+    return _subscribe(identifier).then((controller) {
+      return Channel(
+        name: channelName,
+        params: channelParams ?? {},
+        subscription: controller.stream.listen(onData,
+            onError: onError, onDone: onDone, cancelOnError: true),
+        perform: (String action, Map<String, dynamic> params) =>
+            _perform(identifier, action, params),
+      );
+    });
   }
 
   void _websocketData(dynamic data) {
@@ -72,25 +132,40 @@ class Connection implements AsyncCableConnection {
     // repeatable, so we need to decode, sort, and re-encode into a string to
     // get a consistent identifier. This is obviously pretty annoying!
     final identifier = ChannelIdentifier.normalize(message["identifier"]);
-    final channel = _channels[identifier];
-
-    if (channel == null) {
-      _closeWithError(AsyncCableProtocolError(
-          "Received unexpected $data message for unknown channel $identifier"));
-      return;
-    }
 
     switch (message["type"]) {
       case "confirm_subscription":
-        channel.subscriptionConfirmed();
+        final completer = _pending.remove(identifier);
+        if (completer != null) {
+          final controller = StreamController.broadcast(
+              onCancel: () => _unsubscribe(identifier));
+          _controllers[identifier] = controller;
+          completer.complete(controller);
+        } else {
+          _closeWithError(AsyncCableProtocolError(
+              "Received unexpected $data message for unknown channel $identifier"));
+        }
         break;
 
       case "reject_subscription":
-        channel.subscriptionRejected();
+        final completer = _pending.remove(identifier);
+        if (completer != null) {
+          completer.completeError(AsyncCableSubscriptionRejected());
+        } else {
+          _closeWithError(AsyncCableProtocolError(
+              "Received unexpected $data message for unknown channel $identifier"));
+        }
         break;
 
       case null:
-        channel.messageReceived(message["message"]);
+        final controller = _controllers[identifier];
+
+        if (controller != null) {
+          controller.add(message["message"]);
+        } else {
+          _closeWithError(AsyncCableProtocolError(
+              "Received unexpected $data message for unknown channel $identifier"));
+        }
         break;
 
       default:
@@ -147,8 +222,12 @@ class Connection implements AsyncCableConnection {
     _websocketSubscription?.cancel();
     _websocketSubscription = null;
     _websocket.close();
-    for (var channel in _channels.values) {
-      channel.closeWithError(error);
+    for (var controller in _controllers.values) {
+      controller.addError(error);
+      controller.close();
+    }
+    for (var completer in _pending.values) {
+      completer.completeError(error);
     }
     if (!_welcomed.isCompleted) _welcomed.completeError(error);
     _onError?.call(error);
@@ -161,10 +240,16 @@ class Connection implements AsyncCableConnection {
     _websocketSubscription?.cancel();
     _websocketSubscription = null;
     _websocket.close();
-    for (var channel in _channels.values) {
-      channel.close();
+    for (var controller in _controllers.values) {
+      controller.close();
+    }
+    for (var completer in _pending.values) {
+      completer.completeError(StateError("Connection was closed while subscribing"));
     }
   }
+
+  @override
+  bool get isClosed => (_websocketSubscription == null);
 
   void _websocketError(dynamic error) {
     _closeWithError(AsyncCableNetworkError(error));
@@ -181,39 +266,36 @@ class Connection implements AsyncCableConnection {
     }
   }
 
-  @override
-  Channel channel(String name, Map<String, dynamic>? params) {
-    if (!name.endsWith("Channel")) {
-      throw UnsupportedError(
-          "Invalid channel name '$name' (ActionCable requires that channels end with 'Channel')");
-    }
+  Future<StreamController> _subscribe(String identifier) {
+    final completed = _controllers[identifier];
+    if (completed != null) return Future.value(completed);
 
-    final identifier = ChannelIdentifier.encode(name, params ?? {});
+    final inProgress = _pending[identifier];
+    if (inProgress != null) return inProgress.future;
 
-    return _channels[identifier] ??= Channel(
-      name: name,
-      params: params ?? {},
-      identifier: identifier,
-      onListen: (Channel channel) {
-        _websocket.add(json.encode({
-          "command": "subscribe",
-          "identifier": identifier,
-        }));
-      },
-      onCancel: (Channel channel) {
-        _websocket.add(json.encode({
-          "command": "unsubscribe",
-          "identifier": identifier,
-        }));
-      },
-      perform: (Channel channel, String action, Map<String, dynamic> data) {
-        // ActionCable expects data be double-encoded, like identifier :(
-        _websocket.add(json.encode({
-          "command": "message",
-          "identifier": identifier,
-          "data": json.encode({"action": action, ...data}),
-        }));
-      },
-    );
+    _websocket.add(json.encode({
+      "command": "subscribe",
+      "identifier": identifier,
+    }));
+    final completer = Completer<StreamController>();
+    _pending[identifier] = completer;
+    return completer.future;
+  }
+
+  void _unsubscribe(String identifier) {
+    _controllers.remove(identifier);
+    _websocket.add(json.encode({
+      "command": "unsubscribe",
+      "identifier": identifier,
+    }));
+  }
+
+  void _perform(String identifier, String action, Map<String, dynamic> data) {
+    _websocket.add(json.encode({
+      "command": "message",
+      "identifier": identifier,
+      // ActionCable expects data be double-encoded, like identifier :(
+      "data": json.encode({"action": action, ...data}),
+    }));
   }
 }

@@ -13,10 +13,10 @@ void main() async {
       "Authorization": "Bearer $accessToken",
     },
   );
-  final channel = connection.channel("HelloChannel", {"foo": "bar"});
-  channel.messages.listen(
+  final channel = await connection.subscribe(
+    "HelloChannel",
+    {"foo": "bar"},
     (message) => print("Received ${message.message["greeting"]}"),
-    cancelOnError: true,
   );
   channel.perform("hello", {"greeting": "hi"});
 }

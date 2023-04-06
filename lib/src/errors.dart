@@ -1,5 +1,3 @@
-import 'types.dart';
-
 class AsyncCableError extends Error {}
 
 class AsyncCableProtocolError extends AsyncCableError {
@@ -31,11 +29,5 @@ class AsyncCableNetworkError extends AsyncCableError {
 }
 
 class AsyncCableSubscriptionRejected extends AsyncCableError {
-  /// The channel.
-  final AsyncCableChannel channel;
-
-  AsyncCableSubscriptionRejected(this.channel);
-
-  @override
-  String toString() => "AsyncCableSubscriptionRejected: ${channel.name}";
+  AsyncCableSubscriptionRejected();
 }
