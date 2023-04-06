@@ -75,12 +75,12 @@ abstract class AsyncCableConnection {
   /// When the last subscriber cancels the subscription, an `unsubscribe` message
   /// will be sent to the server, after which it can be subscribed again.
   ///
-  /// If an error occurs while waiting for the server to respond to the
-  /// subscription request, the future completes with an error, which will be one
-  /// of the [AsyncCableError] subclasses. If [close()] is called while waiting
-  /// for the server to respond to the subscription request, the future completes
-  /// with a [StateError] error. If the connection is already closed when this
-  /// method is called, throws a [StateError] immediately.
+  /// If a protocol or network error occurs while waiting for the server to
+  /// respond to the subscription request, or has already occurred, the future
+  /// completes with an error, which will be one of the [AsyncCableError]
+  /// subclasses. If [close()] is called while waiting for the server to respond
+  /// to the subscription request, or has already been called, the future
+  /// completes with a [StateError] error.
   ///
   /// Channel subscriptions always have cancelOnError semantics as nothing can
   /// happen once a subscription is rejected or a connection encounters an error.

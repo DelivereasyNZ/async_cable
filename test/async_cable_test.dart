@@ -400,10 +400,12 @@ void main() {
             .called(2);
       });
 
-      test('completes with an error if the connection is closed by an error before the subscription is confirmed', () async {
+      test(
+          'completes with an error if the connection is closed by an error before the subscription is confirmed',
+          () async {
         final future = connection.subscribe("SomeTestChannel", {}, null);
         verify(() => mockWebSocket.add(
-                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+            '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
 
         expect(future, throwsA(isA<AsyncCableServerRestart>()));
         transport.add(
@@ -411,21 +413,36 @@ void main() {
         await Future.delayed(Duration.zero);
       });
 
-      test('completes with an error if the connection is closed by an error before the subscription is confirmed', () async {
+      test(
+          'completes with an error if the connection is closed by an error before the subscription is confirmed',
+          () async {
         final future = connection.subscribe("SomeTestChannel", {}, null);
         verify(() => mockWebSocket.add(
-                '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+            '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
 
         expect(future, throwsA(isA<StateError>()));
         connection.close();
       });
 
-      test('is immediately rejected if the connection is already closed',
+      test(
+          'completes with an error if the connection was already closed by an error',
+          () async {
+        mockWebSocket.close();
+        await Future.delayed(Duration.zero);
+        expect(connection.isClosed, true);
+
+        final future = connection.subscribe("SomeTestChannel", {}, null);
+        expect(future, throwsA(isA<AsyncCableServerClosedConnection>()));
+      });
+
+      test(
+          'completes with an error if the connection was already closed explicitly',
           () async {
         connection.close();
+        expect(connection.isClosed, true);
 
-        expect(() => connection.subscribe("SomeTestChannel", {}, null),
-            throwsA(isA<StateError>()));
+        final future = connection.subscribe("SomeTestChannel", {}, null);
+        expect(future, throwsA(isA<StateError>()));
       });
 
       test('is immediately rejected if the connection name is invalid',

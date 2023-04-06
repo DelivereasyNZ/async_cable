@@ -46,6 +46,7 @@ class Connection implements AsyncCableConnection {
   final Map<String, StreamController> _controllers = {};
   StreamSubscription? _websocketSubscription;
   Timer? _pingTimer;
+  dynamic _error;
 
   // Waits for the welcome message, then completes with this connection object.
   // If a disconnect message (or any other message other than welcome) is
@@ -74,7 +75,11 @@ class Connection implements AsyncCableConnection {
           "Invalid channel name '$channelName' (ActionCable requires that channel names end with 'Channel')");
     }
     if (isClosed) {
-      throw StateError("Can't subscribe to a channel on a closed connection");
+      // We wrap these errors in a future rather than raising as a convenience
+      // to callers, to avoid them needing to handle network errors both synchronously
+      // and asynchronously.
+      return Future.error(_error ??
+          StateError("Can't subscribe to a channel on a closed connection"));
     }
 
     final identifier =
@@ -217,6 +222,7 @@ class Connection implements AsyncCableConnection {
   }
 
   void _closeWithError(AsyncCableError error) {
+    _error = error;
     _pingTimer?.cancel();
     _pingTimer = null;
     _websocketSubscription?.cancel();
@@ -244,7 +250,8 @@ class Connection implements AsyncCableConnection {
       controller.close();
     }
     for (var completer in _pending.values) {
-      completer.completeError(StateError("Connection was closed while subscribing"));
+      completer
+          .completeError(StateError("Connection was closed while subscribing"));
     }
   }
 
