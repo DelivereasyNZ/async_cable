@@ -41,7 +41,7 @@ abstract class AsyncCableChannel {
   /// Closes this channel message stream subscription, and if this was the last
   /// stream subscription, sends an unsubscribe request to the server.
   ///
-  /// This is identical to calling [subscription.cancel()].
+  /// This is identical to calling `subscription.cancel()`.
   void cancel();
 
   /// Sends a command message on this connection.

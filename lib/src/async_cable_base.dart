@@ -6,6 +6,7 @@ import 'connection.dart';
 
 /// Creates connections to ActionCable endpoints.
 class AsyncCable {
+  /// @nodoc Internal stub overridden for tests.
   static var connectWebSocket = WebSocket.connect;
 
   static const defaultConnectTimeout = Duration(seconds: 30);
