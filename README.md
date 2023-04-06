@@ -22,18 +22,18 @@ Then you just need to agree on the channel naming and parameter conventions with
 void main() async {
   final accessToken = yourAuthToken();
   final connection = await AsyncCable.connect(
-    "ws://localhost:3000/store_cable",
+    "ws://localhost:3000/cable",
     headers: {
       "Origin": "http://localhost:3000",
       "Authorization": "Bearer $accessToken",
     },
   );
-  final channel = connection.channel("HelloChannel", {"foo": "bar"});
-  channel.sendCommand({"action": "hello", "greeting": "hi"});
-  channel.messages.listen(
+  final channel = await connection.subscribe(
+    "HelloChannel",
+    {"foo": "bar"},
     (message) => print("Received ${message.message["greeting"]}"),
-    cancelOnError: true,
   );
+  channel.perform("hello", {"greeting": "hi"});
 }
 ```
 
