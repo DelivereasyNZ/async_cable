@@ -38,6 +38,9 @@ abstract class AsyncCableChannel {
   /// from the ActionCable server's end.
   StreamSubscription<dynamic> get subscription;
 
+  /// Whether the connection this channel is a part of has been closed.
+  bool get isConnectionClosed;
+
   /// Closes this channel message stream subscription, and if this was the last
   /// stream subscription, sends an unsubscribe request to the server.
   ///
