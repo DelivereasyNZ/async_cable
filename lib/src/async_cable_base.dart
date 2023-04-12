@@ -9,9 +9,6 @@ class AsyncCable {
   /// @nodoc Internal stub overridden for tests.
   static var connectWebSocket = WebSocket.connect;
 
-  static const defaultConnectTimeout = Duration(seconds: 30);
-  static const defaultPingTimeout = Duration(seconds: 6);
-
   /// Connects to the given ActionCable endpoint and waits for the `welcome` handshake.
   ///
   /// The future will complete with an [AsyncCableConnection] object if the WebSocket
@@ -35,8 +32,8 @@ class AsyncCable {
     String url, {
     Map<String, dynamic>? headers,
     HttpClient? customClient,
-    Duration connectTimeout = defaultConnectTimeout,
-    Duration pingTimeout = defaultPingTimeout,
+    Duration connectTimeout = const Duration(seconds: 30),
+    Duration pingTimeout = const Duration(seconds: 6),
     void Function(AsyncCableError)? onError,
   }) {
     return connectWebSocket(url,

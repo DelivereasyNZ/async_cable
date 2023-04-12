@@ -16,9 +16,14 @@ class Channel implements AsyncCableChannel {
   @override
   final StreamSubscription subscription;
 
+  @override
+  bool get isConnectionClosed => _connection.isClosed;
+
+  final AsyncCableConnection _connection;
   final Function(String, Map<String, dynamic>) _perform;
 
   Channel(
+      this._connection,
       {required this.name,
       required this.params,
       required this.subscription,
@@ -87,6 +92,7 @@ class Connection implements AsyncCableConnection {
 
     return _subscribe(identifier).then((controller) {
       return Channel(
+        this,
         name: channelName,
         params: channelParams ?? {},
         subscription: controller.stream.listen(onData,

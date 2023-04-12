@@ -478,6 +478,7 @@ void main() {
         expect(deliveredMessages[0], {"somedata": "Sent by server"});
         expect(deliveredMessages[1], 100);
         expect(deliveredError, isNull);
+        expect(channel.isConnectionClosed, false);
       });
 
       test('delivers connection errors as channel stream errors', () async {
@@ -486,6 +487,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerRestart>());
+        expect(channel.isConnectionClosed, true);
       });
 
       test(
@@ -495,6 +497,7 @@ void main() {
 
         await Future.delayed(Duration.zero);
         expect(deliveredError, isNull);
+        expect(channel.isConnectionClosed, true);
       });
 
       test(
@@ -506,6 +509,7 @@ void main() {
         expect(deliveredError, isNull);
         verify(() => mockWebSocket.add(
             '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+        expect(channel.isConnectionClosed, false);
       });
 
       test(
@@ -517,6 +521,7 @@ void main() {
         expect(deliveredError, isNull);
         verify(() => mockWebSocket.add(
             '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+        expect(channel.isConnectionClosed, false);
       });
 
       test(
@@ -539,6 +544,8 @@ void main() {
         expect(deliveredError, isNull);
         verify(() => mockWebSocket.add(
             '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+
+        expect(channel.isConnectionClosed, false);
       });
     });
   });
