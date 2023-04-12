@@ -297,10 +297,13 @@ class Connection implements AsyncCableConnection {
 
   void _unsubscribe(String identifier) {
     _controllers.remove(identifier);
-    _websocket.add(json.encode({
-      "command": "unsubscribe",
-      "identifier": identifier,
-    }));
+
+    if (!isClosed) {
+      _websocket.add(json.encode({
+        "command": "unsubscribe",
+        "identifier": identifier,
+      }));
+    }
   }
 
   void _perform(String identifier, String action, Map<String, dynamic> data) {

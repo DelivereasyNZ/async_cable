@@ -547,6 +547,20 @@ void main() {
 
         expect(channel.isConnectionClosed, false);
       });
+
+      test(
+          'closes the channel stream without sending an unsubscribe request if the channel subscription is explicitly cancelled but the connection was already closed',
+          () async {
+        transport.close();
+        await Future.delayed(Duration.zero);
+
+        channel.subscription.cancel();
+
+        await Future.delayed(Duration.zero);
+        expect(deliveredError, isA<AsyncCableServerClosedConnection>());
+        verifyNever(() => mockWebSocket.add(
+            '{"command":"unsubscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+      });
     });
   });
 }
