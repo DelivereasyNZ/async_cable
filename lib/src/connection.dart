@@ -286,7 +286,7 @@ class Connection implements AsyncCableConnection {
     final inProgress = _pending[identifier];
     if (inProgress != null) return inProgress.future;
 
-    final completer = Completer<StreamController>();
+    final completer = Completer<StreamController>.sync();
     _pending[identifier] = completer;
     _websocket.add(json.encode({
       "command": "subscribe",

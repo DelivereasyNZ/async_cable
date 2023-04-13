@@ -563,4 +563,36 @@ void main() {
       });
     });
   });
+
+  group('with a synchronous transport stream', () {
+    late AsyncCableConnection connection;
+
+    setUp(() async {
+      // This reproduces a problem we can observe with the real WebSocket, but
+      // we mostly prefer to test with async to check we don't have any other{
+      // places we expect things to be delivered exactly when the test says so.
+      transport = StreamController.broadcast(sync: true);
+
+      completer.complete(mockWebSocket);
+      whenListen(() => addWelcome());
+
+      connection = await AsyncCable.connect(url);
+
+      when(() => mockWebSocket.add(any())).thenReturn(null);
+    });
+
+    test('delivers any messages received immediately after the confirmation', () async {
+      dynamic deliveredMessage;
+      final future = connection.subscribe("SomeTestChannel", {}, (message) => deliveredMessage = message);
+
+      transport.add(
+          '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
+      transport.add(
+          '{"identifier":"{\\"channel\\":\\"SomeTestChannel\\"}","message":{"somedata":"Sent by server"}}');
+      await Future.delayed(Duration.zero);
+
+      expect(await future, isA<AsyncCableChannel>());
+      expect(deliveredMessage, {"somedata": "Sent by server"});
+    });
+  });
 }
