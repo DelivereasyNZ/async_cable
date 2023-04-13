@@ -22,8 +22,7 @@ class Channel implements AsyncCableChannel {
   final AsyncCableConnection _connection;
   final Function(String, Map<String, dynamic>) _perform;
 
-  Channel(
-      this._connection,
+  Channel(this._connection,
       {required this.name,
       required this.params,
       required this.subscription,
