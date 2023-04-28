@@ -1,3 +1,7 @@
+## 1.1.3
+
+- Defer cancelling the stream subscription to workaround race in SecureSocket.
+
 ## 1.1.2
 
 - Synchronously convert the stream controller into channels to avoid the possibility of missing a channel message received on the websocket straight after the confirm_subscription.
