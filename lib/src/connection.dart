@@ -50,6 +50,7 @@ class Connection implements AsyncCableConnection {
   final Map<String, StreamController> _controllers = {};
   StreamSubscription? _websocketSubscription;
   Timer? _pingTimer;
+  bool _isClosed = false;
   dynamic _error;
 
   // Waits for the welcome message, then completes with this connection object.
@@ -102,7 +103,12 @@ class Connection implements AsyncCableConnection {
     });
   }
 
+  @override
+  bool get isClosed => _isClosed;
+
   void _websocketData(dynamic data) {
+    if (_isClosed) return;
+
     final message = _decodeMessage(data);
     if (message == null) return; // _closeWithError has already been called
 
@@ -227,11 +233,10 @@ class Connection implements AsyncCableConnection {
   }
 
   void _closeWithError(AsyncCableError error) {
+    _isClosed = true;
     _error = error;
     _pingTimer?.cancel();
     _pingTimer = null;
-    _websocketSubscription?.cancel();
-    _websocketSubscription = null;
     _websocket.close();
     for (var controller in _controllers.values) {
       controller.addError(error);
@@ -246,10 +251,9 @@ class Connection implements AsyncCableConnection {
 
   @override
   void close() {
+    _isClosed = true;
     _pingTimer?.cancel();
     _pingTimer = null;
-    _websocketSubscription?.cancel();
-    _websocketSubscription = null;
     _websocket.close();
     for (var controller in _controllers.values) {
       controller.close();
@@ -260,22 +264,24 @@ class Connection implements AsyncCableConnection {
     }
   }
 
-  @override
-  bool get isClosed => (_websocketSubscription == null);
-
   void _websocketError(dynamic error) {
     _closeWithError(AsyncCableNetworkError(error));
   }
 
   void _websocketDone() {
-    // close() and _closeWithError() cancel the subscription before closing the
-    // socket, so if the subscription is still present, closing was unexpected.
-    if (_websocketSubscription != null) {
+    // close() and _closeWithError() set _done before closing the socket, so if
+    // that's false, closing was unexpected.
+    if (!_isClosed) {
       _closeWithError(_welcomed.isCompleted
           ? AsyncCableServerClosedConnection()
           : AsyncCableProtocolError(
               "Connection closed before welcome message"));
     }
+
+    // Due to a race condition in the dart:io SecureSocket class, we need to
+    // avoid cancelling the subscription until the done callback fires.
+    _websocketSubscription?.cancel();
+    _websocketSubscription = null;
   }
 
   Future<StreamController> _subscribe(String identifier) {
