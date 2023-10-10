@@ -240,7 +240,8 @@ void main() {
 
         expect(deliveredError, isA<AsyncCableNetworkError>());
         expect(connection.isClosed, true);
-        expect(deliveredError.toString(), "AsyncCableNetworkError: dummy websocket error");
+        expect(deliveredError.toString(),
+            "AsyncCableNetworkError: dummy websocket error");
       });
 
       test('delivers a protocol error if a non-map JSON message is received',
@@ -249,7 +250,8 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
-        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid non-map JSON message [\"test\"]");
+        expect(deliveredError.toString(),
+            "AsyncCableProtocolError: Received invalid non-map JSON message [\"test\"]");
         expect(connection.isClosed, true);
       });
 
@@ -259,7 +261,8 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
-        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid JSON message foo: bar");
+        expect(deliveredError.toString(),
+            "AsyncCableProtocolError: Received invalid JSON message foo: bar");
         expect(connection.isClosed, true);
       });
 
@@ -269,7 +272,8 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
-        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid non-string message");
+        expect(deliveredError.toString(),
+            "AsyncCableProtocolError: Received invalid non-string message");
         expect(connection.isClosed, true);
       });
 
@@ -611,9 +615,11 @@ void main() {
       when(() => mockWebSocket.add(any())).thenReturn(null);
     });
 
-    test('delivers any messages received immediately after the confirmation', () async {
+    test('delivers any messages received immediately after the confirmation',
+        () async {
       dynamic deliveredMessage;
-      final future = connection.subscribe("SomeTestChannel", {}, (message) => deliveredMessage = message);
+      final future = connection.subscribe(
+          "SomeTestChannel", {}, (message) => deliveredMessage = message);
 
       transport.add(
           '{"type":"confirm_subscription","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}');
