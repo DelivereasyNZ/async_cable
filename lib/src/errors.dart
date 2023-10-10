@@ -1,4 +1,7 @@
-class AsyncCableError extends Error {}
+class AsyncCableError extends Error {
+  @override
+  String toString() => runtimeType.toString();
+}
 
 class AsyncCableProtocolError extends AsyncCableError {
   String error;

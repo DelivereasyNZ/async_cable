@@ -207,6 +207,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerRestart>());
+        expect(deliveredError.toString(), "AsyncCableServerRestart");
         expect(connection.isClosed, true);
       });
 
@@ -217,6 +218,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerClosedConnection>());
+        expect(deliveredError.toString(), "AsyncCableServerClosedConnection");
         expect(connection.isClosed, true);
       });
 
@@ -227,6 +229,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableServerClosedConnection>());
+        expect(deliveredError.toString(), "AsyncCableServerClosedConnection");
         expect(connection.isClosed, true);
       });
 
@@ -237,6 +240,7 @@ void main() {
 
         expect(deliveredError, isA<AsyncCableNetworkError>());
         expect(connection.isClosed, true);
+        expect(deliveredError.toString(), "AsyncCableNetworkError: dummy websocket error");
       });
 
       test('delivers a protocol error if a non-map JSON message is received',
@@ -245,6 +249,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid non-map JSON message [\"test\"]");
         expect(connection.isClosed, true);
       });
 
@@ -254,6 +259,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid JSON message foo: bar");
         expect(connection.isClosed, true);
       });
 
@@ -263,6 +269,7 @@ void main() {
         await Future.delayed(Duration.zero);
 
         expect(deliveredError, isA<AsyncCableProtocolError>());
+        expect(deliveredError.toString(), "AsyncCableProtocolError: Received invalid non-string message");
         expect(connection.isClosed, true);
       });
 
