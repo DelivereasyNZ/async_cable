@@ -1,3 +1,7 @@
+## 1.1.4
+
+- Error class toString() improvements.
+
 ## 1.1.3
 
 - Defer cancelling the stream subscription to workaround race in SecureSocket.
