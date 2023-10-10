@@ -245,6 +245,7 @@ class Connection implements AsyncCableConnection {
     for (var completer in _pending.values) {
       completer.completeError(error);
     }
+    _pending.clear();
     if (!_welcomed.isCompleted) _welcomed.completeError(error);
     _onError?.call(error);
   }
@@ -262,6 +263,7 @@ class Connection implements AsyncCableConnection {
       completer
           .completeError(StateError("Connection was closed while subscribing"));
     }
+    _pending.clear();
   }
 
   void _websocketError(dynamic error) {

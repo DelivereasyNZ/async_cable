@@ -421,13 +421,25 @@ void main() {
       });
 
       test(
-          'completes with an error if the connection is closed by an error before the subscription is confirmed',
+          'completes with a StateError error if the connection is closed by an error before the subscription is confirmed',
           () async {
         final future = connection.subscribe("SomeTestChannel", {}, null);
         verify(() => mockWebSocket.add(
             '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
 
         expect(future, throwsA(isA<StateError>()));
+        connection.close();
+      });
+
+      test(
+          'completes with a StateError error if close() is called twice before the subscription is confirmed',
+          () async {
+        final future = connection.subscribe("SomeTestChannel", {}, null);
+        verify(() => mockWebSocket.add(
+            '{"command":"subscribe","identifier":"{\\"channel\\":\\"SomeTestChannel\\"}"}'));
+
+        expect(future, throwsA(isA<StateError>()));
+        connection.close();
         connection.close();
       });
 
@@ -500,6 +512,17 @@ void main() {
       test(
           'closes the channel stream without error if the connection is explicitly closed',
           () async {
+        connection.close();
+
+        await Future.delayed(Duration.zero);
+        expect(deliveredError, isNull);
+        expect(channel.isConnectionClosed, true);
+      });
+
+      test(
+          'closes the channel stream without error if the connection is explicitly closed twice',
+          () async {
+        connection.close();
         connection.close();
 
         await Future.delayed(Duration.zero);
