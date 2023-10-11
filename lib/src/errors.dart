@@ -31,6 +31,6 @@ class AsyncCableNetworkError extends AsyncCableError {
   String toString() => "AsyncCableNetworkError: $error";
 }
 
-class AsyncCableSubscriptionRejected extends AsyncCableError {
-  AsyncCableSubscriptionRejected();
-}
+class AsyncCableSubscriptionRejected extends AsyncCableError {}
+
+class AsyncCableClientClosedConnection extends AsyncCableError {}

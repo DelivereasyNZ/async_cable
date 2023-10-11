@@ -83,8 +83,7 @@ class Connection implements AsyncCableConnection {
       // We wrap these errors in a future rather than raising as a convenience
       // to callers, to avoid them needing to handle network errors both synchronously
       // and asynchronously.
-      return Future.error(_error ??
-          StateError("Can't subscribe to a channel on a closed connection"));
+      return Future.error(_error ?? AsyncCableClientClosedConnection());
     }
 
     final identifier =
@@ -260,8 +259,7 @@ class Connection implements AsyncCableConnection {
       controller.close();
     }
     for (var completer in _pending.values) {
-      completer
-          .completeError(StateError("Connection was closed while subscribing"));
+      completer.completeError(AsyncCableClientClosedConnection());
     }
     _pending.clear();
   }
