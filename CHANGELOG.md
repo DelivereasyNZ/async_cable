@@ -1,3 +1,8 @@
+## 1.2.0
+
+- Emit AsyncCableClientClosedConnection instead of StateError from subscription futures on close()
+- Fix Future error when calling close() twice
+
 ## 1.1.4
 
 - Error class toString() improvements.
