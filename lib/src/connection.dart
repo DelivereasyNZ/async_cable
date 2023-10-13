@@ -276,6 +276,9 @@ class Connection implements AsyncCableConnection {
       }
       return true;
     });
+    if (!_welcomed.isCompleted) {
+      _welcomed.completeError(AsyncCableClientClosedConnection());
+    }
   }
 
   void _websocketError(dynamic error) {
