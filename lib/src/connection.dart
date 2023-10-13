@@ -237,15 +237,23 @@ class Connection implements AsyncCableConnection {
     _pingTimer?.cancel();
     _pingTimer = null;
     _websocket.close();
-    for (var controller in _controllers.values) {
-      controller.addError(error);
-      controller.close();
+    _controllers.removeWhere((_, controller) {
+      if (!controller.isClosed) {
+        controller.addError(error);
+        controller.close();
+      }
+      return true;
+    });
+    _pending.removeWhere((_, completer) {
+      // should always be true:
+      if (!completer.isCompleted) {
+        completer.completeError(error);
+      }
+      return true;
+    });
+    if (!_welcomed.isCompleted) {
+      _welcomed.completeError(error);
     }
-    for (var completer in _pending.values) {
-      completer.completeError(error);
-    }
-    _pending.clear();
-    if (!_welcomed.isCompleted) _welcomed.completeError(error);
     _onError?.call(error);
   }
 
@@ -255,13 +263,19 @@ class Connection implements AsyncCableConnection {
     _pingTimer?.cancel();
     _pingTimer = null;
     _websocket.close();
-    for (var controller in _controllers.values) {
-      controller.close();
-    }
-    for (var completer in _pending.values) {
-      completer.completeError(AsyncCableClientClosedConnection());
-    }
-    _pending.clear();
+    _controllers.removeWhere((_, controller) {
+      if (!controller.isClosed) {
+        controller.close();
+      }
+      return true;
+    });
+    _pending.removeWhere((_, completer) {
+      // should always be true:
+      if (!completer.isCompleted) {
+        completer.completeError(AsyncCableClientClosedConnection());
+      }
+      return true;
+    });
   }
 
   void _websocketError(dynamic error) {
