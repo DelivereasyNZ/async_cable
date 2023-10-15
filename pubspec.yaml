@@ -1,6 +1,6 @@
 name: async_cable
 description: Async/stream-oriented implementation of the Rails ActionCable protocol for Dart & Flutter.
-version: 1.2.1
+version: 1.2.2
 homepage: https://github.com/DelivereasyNZ/async_cable
 
 environment:

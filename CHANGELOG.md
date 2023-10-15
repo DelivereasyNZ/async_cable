@@ -1,11 +1,15 @@
+## 1.2.2
+
+- Early-return from `close()` if already closed.
+
 ## 1.2.1
 
-- Complete the `connected` future with a `AsyncCableClientClosedConnection` error if `close()` is called
+- Complete the `connected` future with a `AsyncCableClientClosedConnection` error if `close()` is called.
 
 ## 1.2.0
 
-- Emit `AsyncCableClientClosedConnection` instead of `StateError` from subscription futures if `close()` is called
-- Fix `Future` error when calling `close()` twice
+- Emit `AsyncCableClientClosedConnection` instead of `StateError` from subscription futures if `close()` is called.
+- Fix `Future` error when calling `close()` twice.
 
 ## 1.1.4
 
