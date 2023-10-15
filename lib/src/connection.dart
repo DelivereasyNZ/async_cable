@@ -259,6 +259,7 @@ class Connection implements AsyncCableConnection {
 
   @override
   void close() {
+    if (_isClosed) return;
     _isClosed = true;
     _pingTimer?.cancel();
     _pingTimer = null;
