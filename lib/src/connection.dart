@@ -287,8 +287,8 @@ class Connection implements AsyncCableConnection {
   }
 
   void _websocketDone() {
-    // close() and _closeWithError() set _done before closing the socket, so if
-    // that's false, closing was unexpected.
+    // close() and _closeWithError() set _isClosed before closing the socket, so
+    // if that's false, closing was unexpected.
     if (!_isClosed) {
       _closeWithError(_welcomed.isCompleted
           ? AsyncCableServerClosedConnection()
@@ -297,7 +297,7 @@ class Connection implements AsyncCableConnection {
     }
 
     // Due to a race condition in the dart:io SecureSocket class, we need to
-    // avoid cancelling the subscription until the done callback fires.
+    // avoid cancelling the subscription until this done callback fires.
     _websocketSubscription?.cancel();
     _websocketSubscription = null;
   }
