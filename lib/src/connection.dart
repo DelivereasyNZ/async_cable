@@ -263,19 +263,19 @@ class Connection implements AsyncCableConnection {
     _pingTimer?.cancel();
     _pingTimer = null;
     _websocket.close();
-    _controllers.removeWhere((_, controller) {
+    for (final controller in _controllers.values) {
       if (!controller.isClosed) {
         controller.close();
       }
-      return true;
-    });
-    _pending.removeWhere((_, completer) {
+    }
+    _controllers.clear();
+    for (final completer in _pending.values) {
       // should always be true:
       if (!completer.isCompleted) {
         completer.completeError(AsyncCableClientClosedConnection());
       }
-      return true;
-    });
+    }
+    _pending.clear();
     if (!_welcomed.isCompleted) {
       _welcomed.completeError(AsyncCableClientClosedConnection());
     }
